@@ -41,15 +41,15 @@ function extractQuestionFromMention(body: string): string {
   return body.replace(/@[\w]+\s*/g, "").trim();
 }
 
-function isReplyToBot(msg: Message): boolean {
-  const quotedMsg = msg.quotedMsg;
-  if (!quotedMsg) return false;
+async function isReplyToBot(msg: Message): Promise<boolean> {
+  if (!msg.hasQuotedMsg) return false;
+  const quotedMsg = await msg.getQuotedMessage();
   return quotedMsg.author === client.info.wid._serialized;
 }
 
-function getQuotedMessageText(msg: Message): string {
-  const quotedMsg = msg.quotedMsg;
-  if (!quotedMsg) return "";
+async function getQuotedMessageText(msg: Message): Promise<string> {
+  if (!msg.hasQuotedMsg) return "";
+  const quotedMsg = await msg.getQuotedMessage();
   return quotedMsg.body;
 }
 
@@ -67,17 +67,15 @@ async function handleMessage(msg: Message) {
   if (isGroup) {
     const mentionedIds = msg.mentionedIds || [];
     const botId = client.info.wid._serialized;
-    const isMentionedInGroup = mentionedIds.some(
-      (id) => id._serialized === botId,
-    );
-    const isReplyToBotMsg = isReplyToBot(msg);
+    const isMentionedInGroup = mentionedIds.some((id) => id === botId);
+    const isReplyToBotMsg = await isReplyToBot(msg);
 
     if (isMentionedInGroup) {
       shouldRespond = true;
       question = extractQuestionFromMention(body);
     } else if (isReplyToBotMsg) {
       shouldRespond = true;
-      const quotedText = getQuotedMessageText(msg);
+      const quotedText = await getQuotedMessageText(msg);
       question = body || quotedText;
     }
   } else {
